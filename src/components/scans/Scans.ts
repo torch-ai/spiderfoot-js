@@ -1,10 +1,14 @@
 import Component from "../Component";
 import {
+  EnumDataTypes,
   IScan,
+  IScanEventResults,
   IScanSummaryItems,
+  TScanEventResults,
   TScanResult,
   TScanSummaryItemsResult,
 } from "./Scans.types";
+import { TDateString } from "../Component.types";
 // import {} from "./Scans.types";
 
 export class Scans extends Component {
@@ -22,26 +26,30 @@ export class Scans extends Component {
       .then((results) =>
         results ? results.map(getScanSummaryItemsFromResult) : []
       );
+  }
 
-    // fetch("http://localhost:5009/scansummary", {
-    //   "headers": {
-    //     "accept": "application/json, text/javascript, */*; q=0.01",
-    //     "accept-language": "en-US,en;q=0.9",
-    //     "cache-control": "no-cache",
-    //     "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-    //     "pragma": "no-cache",
-    //     "sec-fetch-dest": "empty",
-    //     "sec-fetch-mode": "cors",
-    //     "sec-fetch-site": "same-origin",
-    //     "x-requested-with": "XMLHttpRequest",
-    //     "cookie": "Webstorm-26fd8f19=a1892be7-90dd-47f2-a94c-b6cd7bb0cc28; Webstorm-e52cbb7f=2221e2b2-64ac-4f07-9198-2f1030f5219c"
-    //   },
-    //   "referrer": "http://localhost:5009/scaninfo?id=2ADCF4C5",
-    //   "referrerPolicy": "strict-origin-when-cross-origin",
-    //   "body": "id=2ADCF4C5&by=type",
-    //   "method": "POST",
-    //   "mode": "cors"
-    // });
+  public getScanEventResults(
+    id: string,
+    eventType: EnumDataTypes | string
+  ): Promise<IScanEventResults[]> {
+    return this.client
+      .post<TScanEventResults[]>(
+        `scaneventresults`,
+        `id=${id}&eventType=${eventType}`
+      )
+      .then((response) => response.data)
+      .then((results) =>
+        results ? results.map(getScanEventResultFromResult) : []
+      );
+  }
+
+  public setFalsePositive(scanId: string, resultIds: string[]): Promise<Scans> {
+    return this.client
+      .post<TScanEventResults[]>(
+        `resultsetfp`,
+        `id=${scanId}&fp=1&resultids=${JSON.stringify(resultIds)}`
+      )
+      .then(() => this);
   }
 
   public deleteScan(id: string): Promise<Scans> {
@@ -70,4 +78,20 @@ const getScanSummaryItemsFromResult = (
   lastDataElement: result[2],
   totalElements: result[3],
   uniqueElements: result[4],
+});
+
+const getScanEventResultFromResult = (
+  result: TScanEventResults
+): IScanEventResults => ({
+  identified: result[0],
+  content: result[1],
+  sourceDataElement: result[2],
+  sourceModule: result[3],
+  a: result[4],
+  b: result[5],
+  c: result[6],
+  id: result[7],
+  isFalsePositive: result[8],
+  f: result[9],
+  dataType: result[10] as EnumDataTypes,
 });
