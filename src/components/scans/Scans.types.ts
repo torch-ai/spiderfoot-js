@@ -11,4 +11,4 @@ export interface IScan {
   elements: number;
 }
 
-type TScanStatus = "FINISHED";
+type TScanStatus = "RUNNING" | "FINISHED" | "FAILED";
