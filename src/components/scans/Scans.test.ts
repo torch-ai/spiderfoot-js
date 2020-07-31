@@ -12,8 +12,12 @@ describe("service.scans", () => {
     expect(service.scans).toBeInstanceOf(Scans);
   });
 
+  let scanId: string = "2ADCF4C5";
+
   it("should retrieve scans", async (done) => {
     const scans = await service.scans.getScans();
+    expect(Array.isArray(scans)).toBeTruthy();
+
     scans.forEach((scan) => {
       expect(scan.id).toBeTruthy();
       expect(scan.target).toBeTruthy();
@@ -33,6 +37,36 @@ describe("service.scans", () => {
       expect(scan.elements).toBeTruthy();
       expect(typeof scan.elements === "number").toBeTruthy();
     });
+
+    done();
+  });
+
+  it("should get scan summary items", async (done) => {
+    const scanSummaryItems = await service.scans.getScanSummaryItemsByType(
+      scanId
+    );
+    expect(Array.isArray(scanSummaryItems)).toBeTruthy();
+    scanSummaryItems.forEach((scanSummaryItem) => {
+      expect(scanSummaryItem.type).toBeTruthy();
+      expect(typeof scanSummaryItem.type === "string").toBeTruthy();
+      expect(scanSummaryItem.name).toBeTruthy();
+      expect(typeof scanSummaryItem.name === "string").toBeTruthy();
+      if (scanSummaryItem.lastDataElement) {
+        expect(
+          typeof scanSummaryItem.lastDataElement === "string"
+        ).toBeTruthy();
+      }
+      expect(scanSummaryItem.totalElements).toBeGreaterThanOrEqual(0);
+      expect(scanSummaryItem.uniqueElements).toBeGreaterThanOrEqual(0);
+    });
+
+    done();
+  });
+
+  it("should delete", async (done) => {
+    const result = await service.scans.deleteScan(scanId);
+    expect(result).toBeInstanceOf(Scans);
+
     done();
   });
 });
