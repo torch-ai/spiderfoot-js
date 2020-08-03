@@ -108,10 +108,7 @@ describe("service.scans", () => {
   });
 
   it.skip("should get event results", async (done) => {
-    const results = await service.scans.getScanEventResults(
-      scanId,
-      "DOMAIN_NAME"
-    );
+    const results = await service.scans.getEventResults(scanId, "DOMAIN_NAME");
 
     expect(Array.isArray(results)).toBeTruthy();
     results.forEach((result) => {
@@ -138,7 +135,7 @@ describe("service.scans", () => {
   });
 
   it.skip("should set false positives", async (done) => {
-    const eventResults = await service.scans.getScanEventResults(
+    const eventResults = await service.scans.getEventResults(
       scanId,
       "DOMAIN_NAME"
     );

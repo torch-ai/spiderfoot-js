@@ -84,7 +84,7 @@ export class Scans extends Component {
       );
   }
 
-  public getScanEventResults(
+  public getEventResults(
     id: string,
     eventType: TDataType | string
   ): Promise<IScanEventResults[]> {
