@@ -1,23 +1,63 @@
 import { getService } from "../../Service.test";
 import { Scans } from "./Scans";
-import { EnumDataTypes } from "./Scans.types";
-import { TDateString } from "../Component.types";
-// import {} from "./Scans.types";
+import { IStartScanOptions } from "./Scans.types";
 
 const service = getService();
 
 /**
  * The tests
+ * Due to the nature of Spiderfoot, tests can take a while.
+ * I've built tests so I know it works but it's a manual process.
+ * Someday, we might put some delay handling to enable full automated tests during build.
  */
 describe("service.scans", () => {
   it("should be an instance of Scans", () => {
     expect(service.scans).toBeInstanceOf(Scans);
   });
 
-  let scanId: string = "2ADCF4C5";
+  const options: IStartScanOptions = {
+    moduleList: ["module_sfp_dnsresolve"],
+    scanName: `Test ${new Date().getTime()}`,
+    scanTarget: "github.com",
+    typeList: ["DOMAIN_NAME", "DNS_TEXT"],
+    useCase: "Passive",
+  };
+  let scanId: string = "";
 
-  it("should retrieve scans", async (done) => {
-    const scans = await service.scans.getScans();
+  it.skip("should provide error feedback if a scan can not be started", async (done) => {
+    const invalidOptions = {
+      ...options,
+      // @ts-ignore
+      scanName: undefined,
+    };
+
+    expect.assertions(3);
+    try {
+      await service.scans.start(invalidOptions);
+    } catch (error) {
+      expect(error.isSpiderfootError).toBeTruthy();
+      expect(error.code).toBe("406");
+      expect(error.message).toMatch("Invalid request");
+    }
+
+    done();
+  });
+
+  it.skip(
+    "should create a scan",
+    async (done) => {
+      const result = await service.scans.start(options);
+      expect(result).toBeTruthy();
+      expect(typeof result === "string").toBeTruthy();
+
+      scanId = result;
+      done();
+    },
+    Scans.startTimeout
+  );
+
+  it.skip("should retrieve scans", async (done) => {
+    const scans = await service.scans.list();
     expect(Array.isArray(scans)).toBeTruthy();
 
     scans.forEach((scan) => {
@@ -40,13 +80,14 @@ describe("service.scans", () => {
       expect(typeof scan.elements === "number").toBeTruthy();
     });
 
+    const testScan = scans.filter((scan) => scan.id === scanId).shift();
+    expect(testScan).toBeTruthy();
+
     done();
   });
 
-  it("should get scan summary items", async (done) => {
-    const scanSummaryItems = await service.scans.getScanSummaryItemsByType(
-      scanId
-    );
+  it.skip("should get scan summary items", async (done) => {
+    const scanSummaryItems = await service.scans.getSummaryItemsByType(scanId);
 
     expect(Array.isArray(scanSummaryItems)).toBeTruthy();
     scanSummaryItems.forEach((scanSummaryItem) => {
@@ -66,10 +107,10 @@ describe("service.scans", () => {
     done();
   });
 
-  it("should get event results", async (done) => {
+  it.skip("should get event results", async (done) => {
     const results = await service.scans.getScanEventResults(
       scanId,
-      EnumDataTypes["Account on External Site"]
+      "DOMAIN_NAME"
     );
 
     expect(Array.isArray(results)).toBeTruthy();
@@ -96,10 +137,23 @@ describe("service.scans", () => {
     done();
   });
 
-  //cca1c8a2d50351380980800d7ad0a611dbd5228f19f3e529d24ec8e9f6025752
+  it.skip("should set false positives", async (done) => {
+    const eventResults = await service.scans.getScanEventResults(
+      scanId,
+      "DOMAIN_NAME"
+    );
+    expect(Array.isArray(eventResults)).toBeTruthy();
+    const eventResult = eventResults.shift();
+    expect(eventResult).toBeTruthy();
 
-  it("should delete", async (done) => {
-    const result = await service.scans.deleteScan(scanId);
+    const result = await service.scans.setFalsePositive(scanId, eventResult.id);
+    expect(result).toBeInstanceOf(Scans);
+
+    done();
+  });
+
+  it.skip("should delete", async (done) => {
+    const result = await service.scans.delete(scanId);
     expect(result).toBeInstanceOf(Scans);
 
     done();

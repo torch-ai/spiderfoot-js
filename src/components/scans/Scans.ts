@@ -1,63 +1,155 @@
+import qs from "qs";
 import Component from "../Component";
 import {
-  EnumDataTypes,
   IScan,
   IScanEventResults,
   IScanSummaryItems,
+  IStartScanOptions,
+  TDataType,
   TScanEventResults,
   TScanResult,
   TScanSummaryItemsResult,
 } from "./Scans.types";
-import { TDateString } from "../Component.types";
-// import {} from "./Scans.types";
+import {
+  SpiderfootInvalidRequestError,
+  SpiderfootPreconditionFailedRequestError,
+  SpiderfootRequestError,
+} from "../../Service.types";
 
 export class Scans extends Component {
-  public getScans(): Promise<IScan[]> {
+  public static startTimeout = 10000;
+
+  public start(options: IStartScanOptions): Promise<string> {
+    const typeList = options.typeList
+      ? options.typeList.map((type) => `type_${type}`).join(",")
+      : "";
+    const data = qs.stringify({
+      modulelist: options.moduleList ? options.moduleList.join(",") : "",
+      scanname: options.scanName || "",
+      scantarget: options.scanTarget || "",
+      typelist: typeList,
+      usecase: options.useCase || "",
+    });
+
+    return this.client
+      .post<string>("startscan", data, {
+        timeout: Scans.startTimeout,
+      })
+      .then((response) => response.data)
+      .then((html) => {
+        const invalidMatch = html.match(/Invalid request:.+\./i);
+        if (invalidMatch) {
+          throw new SpiderfootInvalidRequestError(invalidMatch.shift());
+        }
+
+        const scanIdMatch = html.match(/scanStatusView\("(.+)"\)/i);
+        if (scanIdMatch) {
+          return scanIdMatch[1];
+        }
+
+        throw new SpiderfootRequestError("A scan id could not be identified");
+      });
+  }
+
+  public stop(id: string): Promise<Scans> {
+    return this.client
+      .get<string>("stopscan", {
+        params: {
+          id,
+        },
+      })
+      .then((response) => response.data)
+      .then((html) => {
+        if (contentHasAlert(html)) {
+          throw new SpiderfootRequestError(getAlertContent(html));
+        }
+
+        return this;
+      });
+  }
+
+  public list(): Promise<IScan[]> {
     return this.client
       .post<TScanResult[]>(`scanlist`)
       .then((response) => response.data)
       .then((results) => (results ? results.map(getScanFromResult) : []));
   }
 
-  public getScanSummaryItemsByType(id: string): Promise<IScanSummaryItems[]> {
+  public getSummaryItemsByType(id: string): Promise<IScanSummaryItems[]> {
     return this.client
       .post<TScanSummaryItemsResult[]>(`scansummary`, `id=${id}&by=type`)
       .then((response) => response.data)
       .then((results) =>
-        results ? results.map(getScanSummaryItemsFromResult) : []
+        results ? results.map(getSummaryItemsFromResult) : []
       );
   }
 
   public getScanEventResults(
     id: string,
-    eventType: EnumDataTypes | string
+    eventType: TDataType | string
   ): Promise<IScanEventResults[]> {
+    const data = qs.stringify({
+      id,
+      eventType,
+    });
     return this.client
-      .post<TScanEventResults[]>(
-        `scaneventresults`,
-        `id=${id}&eventType=${eventType}`
-      )
+      .post<TScanEventResults[]>(`scaneventresults`, data)
       .then((response) => response.data)
       .then((results) =>
-        results ? results.map(getScanEventResultFromResult) : []
+        results ? results.map(getEventResultFromResult) : []
       );
   }
 
-  public setFalsePositive(scanId: string, resultIds: string[]): Promise<Scans> {
+  public setFalsePositive(
+    id: string,
+    resultIds: string | string[],
+    isFalsePositive: 0 | 1 = 1
+  ): Promise<Scans> {
+    const standardizedResultIds = Array.isArray(resultIds)
+      ? resultIds
+      : [resultIds];
+    const data = qs.stringify({
+      id,
+      fp: isFalsePositive,
+      resultids: `[${standardizedResultIds
+        .map((resultId) => `"${resultId}"`)
+        .join(",")}]`,
+    });
+
     return this.client
-      .post<TScanEventResults[]>(
-        `resultsetfp`,
-        `id=${scanId}&fp=1&resultids=${JSON.stringify(resultIds)}`
-      )
-      .then(() => this);
+      .post<string[]>(`resultsetfp`, data)
+      .then((response) => response.data)
+      .then((data) => {
+        if (data[0] === "SUCCESS") {
+          return this;
+        }
+        throw new SpiderfootPreconditionFailedRequestError(data.join(" - "));
+      });
   }
 
-  public deleteScan(id: string): Promise<Scans> {
+  public delete(id: string): Promise<Scans> {
+    const data = {
+      id,
+      confirm: 1,
+    };
     return this.client
-      .get(`scandelete?id=${id}&confirm=1`)
-      .then((response) => this);
+      .get<string>(`scandelete`, {
+        params: data,
+      })
+      .then((response) => response.data)
+      .then((html) => {
+        if (contentHasAlert(html)) {
+          throw new SpiderfootRequestError(getAlertContent(html));
+        }
+
+        return this;
+      });
   }
 }
+
+const contentHasAlert = (html: string): boolean => !!html.match(/alert-error/);
+const getAlertContent = (html: string): string =>
+  html.match(/<h4>(.+)<\/h4>/i)[1] || "Unknown error";
 
 const getScanFromResult = (result: TScanResult): IScan => ({
   id: result[0],
@@ -70,7 +162,7 @@ const getScanFromResult = (result: TScanResult): IScan => ({
   elements: result[7],
 });
 
-const getScanSummaryItemsFromResult = (
+const getSummaryItemsFromResult = (
   result: TScanSummaryItemsResult
 ): IScanSummaryItems => ({
   type: result[0],
@@ -80,7 +172,7 @@ const getScanSummaryItemsFromResult = (
   uniqueElements: result[4],
 });
 
-const getScanEventResultFromResult = (
+const getEventResultFromResult = (
   result: TScanEventResults
 ): IScanEventResults => ({
   identified: result[0],
@@ -93,5 +185,5 @@ const getScanEventResultFromResult = (
   id: result[7],
   isFalsePositive: result[8],
   f: result[9],
-  dataType: result[10] as EnumDataTypes,
+  dataType: result[10] as TDataType,
 });
