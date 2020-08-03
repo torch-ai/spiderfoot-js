@@ -1,6 +1,7 @@
 # Spiderfoot
 
 > This package provides a standardized layer for accessing open source [Spiderfoot services](https://www.spiderfoot.net/) along with data types.
+> Spiderfoot web interface version: Opensource v3.1-DEV
 
 # Usage
 
