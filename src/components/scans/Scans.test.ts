@@ -149,7 +149,7 @@ describe("service.scans", () => {
     done();
   });
 
-  it("should get graph data", async (done) => {
+  it.skip("should get graph data", async (done) => {
     const results = await service.scans.getGraphData(scanId);
     expect(results.edges).toBeTruthy();
     expect(Array.isArray(results.edges));
