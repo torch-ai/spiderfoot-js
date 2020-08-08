@@ -1,4 +1,4 @@
-import { TDateString } from "../Component.types";
+import { TDateString, THexColor } from "../Component.types";
 
 export type TStartScanUseCase = "all" | "Footprint" | "Investigate" | "Passive";
 export interface IStartScanOptions {
@@ -374,3 +374,23 @@ export const dataTypeDescriptions: Record<TDataType, string> = {
   WIFI_ACCESS_POINT: "WiFi Access Point Nearby",
   WIKIPEDIA_PAGE_EDIT: "Wikipedia Page Edit",
 };
+
+export interface IGraphData {
+  nodes: IGraphDataNode[];
+  edges: IGraphDataEdge[];
+}
+
+interface IGraphDataNode {
+  color: THexColor;
+  id: string;
+  label: string; // "TWP1000_(CC1) (Net ID: 00:12:5F:0B:EF:10)", "Etsy (Category: shopping)↵<SFURL>https://www.etsy.com/people/{name}</SFURL>"
+  size: string; // "1"
+  x: number;
+  y: number;
+}
+
+interface IGraphDataEdge {
+  id: string;
+  source: string;
+  target: string;
+}

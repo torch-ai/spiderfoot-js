@@ -149,6 +149,24 @@ describe("service.scans", () => {
     done();
   });
 
+  it("should get graph data", async (done) => {
+    const results = await service.scans.getGraphData(scanId);
+    expect(results.edges).toBeTruthy();
+    expect(Array.isArray(results.edges));
+    results.edges.forEach((edge) => {
+      expect(edge.id).toBeTruthy();
+    });
+    expect(results.nodes).toBeTruthy();
+    expect(Array.isArray(results.nodes));
+    results.nodes.forEach((node) => {
+      expect(node.id).toBeTruthy();
+      expect(node.label).toBeTruthy();
+      expect(node.color).toBeTruthy();
+    });
+
+    done();
+  });
+
   it.skip("should delete", async (done) => {
     const result = await service.scans.delete(scanId);
     expect(result).toBeInstanceOf(Scans);

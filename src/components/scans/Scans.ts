@@ -1,6 +1,7 @@
 import qs from "qs";
 import Component from "../Component";
 import {
+  IGraphData,
   IScan,
   IScanEventResults,
   IScanSummaryItems,
@@ -125,6 +126,18 @@ export class Scans extends Component {
         }
         throw new SpiderfootPreconditionFailedRequestError(data.join(" - "));
       });
+  }
+
+  public getGraphData(id: string): Promise<IGraphData> {
+    const data = {
+      id,
+      gexf: 0,
+    };
+    return this.client
+      .get<IGraphData>(`scanviz`, {
+        params: data,
+      })
+      .then((response) => response.data);
   }
 
   public delete(id: string): Promise<Scans> {
