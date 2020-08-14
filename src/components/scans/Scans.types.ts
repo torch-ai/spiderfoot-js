@@ -16,6 +16,7 @@ export type TScanStatus =
   | "INITIALIZING"
   | "RUNNING"
   | "ABORT-REQUESTED"
+  | "ERROR-FAILED"
   | "FINISHED"
   | "FAILED";
 export type TScanResult = [
